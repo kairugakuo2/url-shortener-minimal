@@ -80,6 +80,69 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+// MAIN 3 ENDPOINTS //////////////////////////
+// ENDPOINT 1 - POST
+app.MapPost("/api/shorten", async (AppDbContext db, UrlRequest request) =>
+{
+    if (string.IsNullOrWhiteSpace(request.LongUrl) || 
+        !Uri.TryCreate(request.LongUrl, UriKind.Absolute, out var uriResult))
+    {
+        return Results.BadRequest(new { error = "Invalid URL" });
+    }
+
+    // Generate a random short code
+    var shortCode = Guid.NewGuid().ToString("N")[..6]; // 6 chars
+
+    var urlMap = new UrlMap
+    {
+        ShortCode = shortCode,
+        LongUrl = request.LongUrl,
+        CreatedAt = DateTime.UtcNow,
+        ClickCount = 0
+    };
+
+    db.UrlMaps.Add(urlMap);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        shortUrl = $"/{shortCode}",
+        urlMap.LongUrl,
+        urlMap.CreatedAt
+    });
+});
+
+// ENDPOINT 2 - GET (for redirecting shorturl to longurl when clicked)
+app.MapGet("/{code}", async (AppDbContext db, string code) =>
+{
+    var urlMap = await db.UrlMaps.FirstOrDefaultAsync(u => u.ShortCode == code);
+    if (urlMap is null)
+        return Results.NotFound(new { error = "Code not found" });
+
+    urlMap.ClickCount++;
+    await db.SaveChangesAsync();
+
+    return Results.Redirect(urlMap.LongUrl);
+});
+
+
+// ENDPOINT 3 - GET (for stats [clickcount, timecreated, etc.])
+app.MapGet("/api/urls/{code}/stats", async (AppDbContext db, string code) =>
+{
+    var urlMap = await db.UrlMaps.FirstOrDefaultAsync(u => u.ShortCode == code);
+    if (urlMap is null)
+        return Results.NotFound(new { error = "Code not found" });
+
+    return Results.Ok(new
+    {
+        urlMap.LongUrl,
+        urlMap.ShortCode,
+        urlMap.CreatedAt,
+        urlMap.ClickCount
+    });
+});
+
+
 app.Run();
 
 // RECORD TYPE
