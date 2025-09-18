@@ -1,12 +1,14 @@
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
 using UrlShortener.Api.Data;
+using UrlShortener.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // EF Core + SqLite
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
+                      ?? "Data Source=UrlShortener.db"));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -58,6 +60,25 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+// HEALTH CHECK ENDPOINT
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// DEMO DATA (for use in Development mode only for debugging/demoing)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    if (!db.UrlMaps.Any())
+    {
+        db.UrlMaps.AddRange(
+            new UrlMap { ShortCode = "abc123", LongUrl = "https://example.com", CreatedAt = DateTime.UtcNow, ClickCount = 0 },
+            new UrlMap { ShortCode = "xyz789", LongUrl = "https://openai.com", CreatedAt = DateTime.UtcNow, ClickCount = 0 }
+        );
+        db.SaveChanges();
+    }
+}
 
 app.Run();
 
