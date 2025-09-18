@@ -1,6 +1,12 @@
 using Microsoft.OpenApi.Models;
+using Microsoft.EntityFrameworkCore;
+using UrlShortener.Api.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// EF Core + SqLite
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
