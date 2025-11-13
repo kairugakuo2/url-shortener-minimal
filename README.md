@@ -3,7 +3,7 @@ This is a project I build to learn more about using C# and working with the .NET
 
 ## Tech Stack
 
-##Installation
+## Installation
 
 ## License
 [MIT]
